@@ -3,6 +3,7 @@ import time
 import telebot
 from dotenv import load_dotenv
 import os
+from db_utils import init_db, set_user_state, get_user_state,init_new_user
 
 load_dotenv()
 BOT_API_TOKEN = os.getenv('BOT_API_TOKEN')
@@ -10,10 +11,13 @@ TEXTRU_API_KEY = os.getenv('TEXTRU_API_KEY')
 
 bot = telebot.TeleBot(BOT_API_TOKEN)
 
-user_states = {}
+init_db()
+# user_states = {}
 
 @bot.message_handler(commands=['help', 'start'])
 def send_welcome(message):
+    user_id = message.from_user.id
+    init_new_user(user_id)
     bot.reply_to(message, """Привет, уверен что вы сталкивались с тем что разные сайты выдают разные результаты проверки на уникальность.
     
 Этот бот используя разные алгоритмы проверки текста на уникальность даст вам наиболее полную картину уникальности вашего текста
@@ -23,20 +27,22 @@ def send_welcome(message):
 def include_text(message):
     bot.reply_to(message, "Проверка на уникальность запущена. Все послейдующие сообщения будут проходить проверку.\nЧтобы остановить проверку напишите воспользуйтесь командой /stop")
     user_id = message.from_user.id
-    user_states[user_id] = True
-    print(1)
+    set_user_state(user_id, True)
+    # user_states[user_id] = True
+
 
 @bot.message_handler(commands=['stop'])
 def stop_unique(message):
     user_id = message.from_user.id
-    user_states[user_id] = False
+    set_user_state(user_id, False)
+    # user_states[user_id] = False
     print(2)
     bot.send_message(message.chat.id, "Проверка на уникальность остановлена, чтобы возобновить проверку используйте команду /unique")
 
 @bot.message_handler(func=lambda text: True)
 def unique_text(message):
     user_id = message.from_user.id
-    if user_id in user_states and user_states[user_id]:
+    if get_user_state(user_id):
         print(message.text)
         unique_textru = get_unique_textru(message.text)
         if unique_textru:
